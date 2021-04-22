@@ -1,10 +1,8 @@
-addpath('c:\\femm42\\mfiles'); % linux (not working) => '/home/c/.wine/drive_c/femm42/mfiles'
-savepath; % sudo chmod 666 /usr/local/MATLAB/R2020b/toolbox/local/pathdef.m
+preamble;
 openfemm(2)
 
 pop_size = 10;
 const_state_ratio = 2/3;
-population = zeros(1,pop_size);
 for i = 1:pop_size
     population(i) = myMotor(); % no params means random init
 end

@@ -1,0 +1,6 @@
+*.fem
+*.ans
+*.asv
+*.swp
+gkits_remix.m
+BuildMotor.m
