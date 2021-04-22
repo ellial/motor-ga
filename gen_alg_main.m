@@ -11,9 +11,8 @@ while ~terminated()
       sort(population); %according to fitness
       parent_1 = population(1);
       parent_2 = population(2);
-      ll = crossover(parent_1, parent_2);
-      child_1 = ll(1);
-      child_2 = ll(2);
+      [child1,child2] = crossover(parent_1, parent_2);
+   
       
       child_1.mutate();
       child_2.mutate();
