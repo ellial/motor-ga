@@ -57,11 +57,18 @@ classdef myMotor
             end
         end
         
-%         function mutated = mutate(self, p_m)
-%            while not check_constraints()
-%                %do stuff
-%            end
-%         end
+        function mutated = mutate(self, p_m)
+               while ~(self.check_constraints())
+           
+               %do stuff
+                prop_arr = ["rso","rsi","dm","dc","ds","fm","fp","ft","fb","go","hh","Jpk"];
+                pos = randi([1,14]); %num_of_param = 14
+                mutated_param = prop_arr(pos);
+                self.(mutated_param) = randi([1,10]); %check range with gkits
+               
+                end
+        end
+         
         
         function totalMass = compute_mass(self)
             BuildMotor(self.rso, self.rsi, self.dm, self.dc, self.ds, ...
@@ -126,11 +133,12 @@ classdef myMotor
     
 end
 
-%function ll = crossover(parent1, parent2 ,p_c)
-%    %crossover ellis
-%    pos = random(1,num_of_params);
-%    %check constraints
-%    %return list ch1,ch2
-%end
+function [ch1,ch2] = crossover(parent1, parent2 ,p_c)
+    %crossover ellis
+    pos = randi([1,14]);
+    prop_arr = ["rso","rsi","dm","dc","ds","fm","fp","ft","fb","go","hh","Jpk"];
+    %check constraints
+    %return list ch1,ch2
+end
  
  
