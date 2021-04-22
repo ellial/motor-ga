@@ -58,15 +58,15 @@ classdef myMotor
         end
         
         function mutated = mutate(self, p_m)
-               while ~(self.check_constraints())
-           
-               %do stuff
-                prop_arr = ["rso","rsi","dm","dc","ds","fm","fp","ft","fb","go","hh","Jpk"];
-                pos = randi([1,14]); %num_of_param = 14
-                mutated_param = prop_arr(pos);
-                self.(mutated_param) = randi([1,10]); %check range with gkits
-               
+            if(randi([1,100]) < (100*p_m))   
+                while ~(self.check_constraints())
+                    prop_arr = ["rso","rsi","dm","dc","ds","fm","fp","ft","fb","go","hh","Jpk"];
+                    pos = randi([1,14]); %num_of_param = 14
+                    mutated_param = prop_arr(pos);
+                    self.(mutated_param) = randi([1,10]); %check range with gkits
+
                 end
+            end
         end
          
         
@@ -138,6 +138,31 @@ function [ch1,ch2] = crossover(parent1, parent2 ,p_c)
     pos = randi([1,14]);
     prop_arr = ["rso","rsi","dm","dc","ds","fm","fp","ft","fb","go","hh","Jpk"];
     %check constraints
+    
+    ch1 = myMotor();  
+    ch2 = myMotor();
+    %child1 crossover
+    if(randi([1,100])< 100*p_c)
+        while ~(ch1.check_constraints())
+            for i=1:pos
+               ch1.(prop_arr(i)) = parent1.(prop_arr(i)); 
+            end   
+            for i = pos:len(prop_arr)
+               ch1.(prop_arr(i)) = parent2.(prop_arr(i)); 
+            end
+        end
+    end
+    %child2 crossover
+    if(randi([1,100])< 100*p_c)
+        while ~(ch2.check_constraints())
+            for i=1:pos
+               ch1.(prop_arr(i)) = parent2.(prop_arr(i)); 
+            end   
+            for i = pos:len(prop_arr)
+               ch1.(prop_arr(i)) = parent1.(prop_arr(i)); 
+            end
+        end
+    end
     %return list ch1,ch2
 end
  
