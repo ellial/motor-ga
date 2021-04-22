@@ -16,6 +16,15 @@ classdef myMotor
         mass    {mustBeNumeric}
     end
     
+    methods (Static)
+        function out = setget_tqdes(data)
+            persistent tqdes;
+            if nargin
+                tqdes = data;
+            end
+            out = tqdes;
+        end
+    end
     
     methods
     
@@ -57,11 +66,10 @@ classdef myMotor
             end
         end
         
-        function mutated = mutate(self, p_m)
+        function mutated = mutate(self, p_m, prop_arr)
             if(randi([1,100]) < (100*p_m))   
                 while ~(self.check_constraints())
-                    prop_arr = ["rso","rsi","dm","dc","ds","fm","fp","ft","fb","go","hh","Jpk"];
-                    pos = randi([1,14]); %num_of_param = 14
+                    pos = randi([1,length(prop_arr)]); 
                     mutated_param = prop_arr(pos);
                     self.(mutated_param) = randi([1,10]); %check range with gkits
 
@@ -81,7 +89,7 @@ classdef myMotor
             % needs to be to get the desired torque;
             mo_groupselectblock(1);
             tq = mo_blockintegral(22);
-            self.hh = max([self.hh*tqdes/abs(tq),30]);
+            self.hh = max([self.hh*self.setget_tqdes/abs(tq),30]);
             %newhh = hh*tqdes/abs(tq);
             mo_clearblock;
 
@@ -106,7 +114,7 @@ classdef myMotor
         end
         
         function fit = eval_fitness(self)
-            fit = calc_mass(self);
+            fit = compute_mass(self);
         end
 
     end
@@ -133,11 +141,9 @@ classdef myMotor
     
 end
 
-function [ch1,ch2] = crossover(parent1, parent2 ,p_c)
+function [ch1,ch2] = crossover(parent1, parent2 ,p_c, prop_arr)
     %crossover ellis
-    pos = randi([1,14]);
-    prop_arr = ["rso","rsi","dm","dc","ds","fm","fp","ft","fb","go","hh","Jpk"];
-    %check constraints
+    pos = randi([1,length(prop_arr)]);
     
     ch1 = myMotor();  
     ch2 = myMotor();
@@ -156,10 +162,10 @@ function [ch1,ch2] = crossover(parent1, parent2 ,p_c)
     if(randi([1,100])< 100*p_c)
         while ~(ch2.check_constraints())
             for i=1:pos
-               ch1.(prop_arr(i)) = parent2.(prop_arr(i)); 
+               ch2.(prop_arr(i)) = parent2.(prop_arr(i)); 
             end   
             for i = pos:len(prop_arr)
-               ch1.(prop_arr(i)) = parent1.(prop_arr(i)); 
+               ch2.(prop_arr(i)) = parent1.(prop_arr(i)); 
             end
         end
     end
