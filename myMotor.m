@@ -1,4 +1,4 @@
-classdef myMotor
+classdef myMotor < handle
     properties
         rso     {mustBeNumeric}
         rsi     {mustBeNumeric}
@@ -14,42 +14,18 @@ classdef myMotor
         Jpk  	{mustBeNumeric}
         fitness {mustBeNumeric}
         mass    {mustBeNumeric}
+        tqdes   {mustBeNumeric}
     end
     
-    methods (Static)
-        function out = setget_tqdes(data)
-            persistent tqdes;
-            if nargin
-                tqdes = data;
-            end
-            out = tqdes;
-        end
-    end
+    
     
     methods
-    
-        function obj = myMotor(rso,rsi,dm,dc,ds,fm,fp,ft,fb,go,hh,Jpk) % constructor
+        
+        function obj = myMotor(rso,rsi,dm,dc,ds,fm,fp,ft,fb,go,hh,Jpk,tqdes) % constructor
             if nargin == 0 % random initialization - CHECK RANGE WITH GKITS
                            % wtf is newrso on original gkitscode  
                 % try random initialization until you meet the constraints
-                while true 
-                    obj.rso = rand();
-                    obj.rsi = rand();
-                    obj.dm  = rand();
-                    obj.dc  = rand();
-                    obj.ds  = rand();
-                    obj.fm  = rand();
-                    obj.fp  = rand();
-                    obj.ft  = rand();
-                    obj.fb  = rand();
-                    obj.go  = rand();
-                    obj.hh  = rand();
-                    obj.Jpk = rand();
-                    
-                    if (obj.check_constraints()) 
-                        break;
-                    end
-                end
+                obj = randinit(obj);
             else % initialize on params
                 obj.rso = rso;
                 obj.rsi = rsi;
@@ -62,7 +38,8 @@ classdef myMotor
                 obj.fb  = fb;
                 obj.go  = go;
                 obj.hh  = hh;
-                obj.Jpk = Jpk;              
+                obj.Jpk = Jpk;          
+                obj.tqdes = tqdes;
             end
         end
         
@@ -82,14 +59,21 @@ classdef myMotor
             BuildMotor(self.rso, self.rsi, self.dm, self.dc, self.ds, ...
                 self.fm, self.fp, self.ft, self.fb, self.go, self.hh, self.Jpk);
             mi_saveas('temp.fem');
-            mi_analyze(1);
+            try
+                mi_analyze(1);
+            catch
+                self = randinit(self);
+                disp(self.rso);
+                totalMass = compute_mass(self);
+                return
+            end
             mi_loadsolution;
 
             % Compute torque for a fixed length to figure out how long the machine
             % needs to be to get the desired torque;
             mo_groupselectblock(1);
             tq = mo_blockintegral(22);
-            self.hh = max([self.hh*self.setget_tqdes/abs(tq),30]);
+            self.hh = max([self.hh*self.tqdes/abs(tq),30]);
             %newhh = hh*tqdes/abs(tq);
             mo_clearblock;
 
@@ -113,14 +97,36 @@ classdef myMotor
             totalMass = round(Magnet_Mass+Iron_Mass+Copper_Mass, 2);
         end
         
-        function fit = eval_fitness(self)
-            fit = compute_mass(self);
+        function eval_fitness(self)
+            self.fitness = compute_mass(self);
+            
+         
         end
 
     end
     
     methods (Access = private)       
-        
+        function obj = randinit(obj)
+            while true 
+                        obj.rso = rand();
+                        obj.rsi = rand();
+                        obj.dm  = rand();
+                        obj.dc  = rand();
+                        obj.ds  = rand();
+                        obj.fm  = rand();
+                        obj.fp  = rand();
+                        obj.ft  = rand();
+                        obj.fb  = rand();
+                        obj.go  = rand();
+                        obj.hh  = rand();
+                        obj.Jpk = rand();
+                        obj.tqdes = rand();
+
+                        if (obj.check_constraints()) 
+                            break;
+                        end
+            end
+        end
         function bOK = check_constraints(self)
             bOK = 1;
             if ((self.rsi + self.ds) > self.rso) 
@@ -141,35 +147,5 @@ classdef myMotor
     
 end
 
-function [ch1,ch2] = crossover(parent1, parent2 ,p_c, prop_arr)
-    %crossover ellis
-    pos = randi([1,length(prop_arr)]);
-    
-    ch1 = myMotor();  
-    ch2 = myMotor();
-    %child1 crossover
-    if(randi([1,100])< 100*p_c)
-        while ~(ch1.check_constraints())
-            for i=1:pos
-               ch1.(prop_arr(i)) = parent1.(prop_arr(i)); 
-            end   
-            for i = pos:len(prop_arr)
-               ch1.(prop_arr(i)) = parent2.(prop_arr(i)); 
-            end
-        end
-    end
-    %child2 crossover
-    if(randi([1,100])< 100*p_c)
-        while ~(ch2.check_constraints())
-            for i=1:pos
-               ch2.(prop_arr(i)) = parent2.(prop_arr(i)); 
-            end   
-            for i = pos:len(prop_arr)
-               ch2.(prop_arr(i)) = parent1.(prop_arr(i)); 
-            end
-        end
-    end
-    %return list ch1,ch2
-end
- 
+
  

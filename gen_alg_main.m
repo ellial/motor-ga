@@ -1,13 +1,15 @@
 preamble;
 openfemm(2)
 
-a = myMotor();
-a.setget_tqdes(22);
+
+
+
 
 pop_size = 3;
 const_state_ratio = 2/3;
 for i = 1:pop_size
     individual = myMotor(); % no params means random init
+    individual.tqdes = 22;
     individual.eval_fitness();
     population(i) = individual;
 end
@@ -40,7 +42,37 @@ while ~terminated(epoch, numOfIter)
 end    
 
 
-
+function [ch1,ch2] = crossover(parent1, parent2 ,p_c, prop_arr)
+    %crossover ellis
+    pos = randi([1,length(prop_arr)]);
+    
+    ch1 = myMotor();  
+    ch2 = myMotor();
+    %child1 crossover
+    if(randi([1,100])< 100*p_c)
+        while ~(ch1.check_constraints())
+            for i=1:pos
+               ch1.(prop_arr(i)) = parent1.(prop_arr(i)); 
+            end   
+            for i = pos:len(prop_arr)
+               ch1.(prop_arr(i)) = parent2.(prop_arr(i)); 
+            end
+        end
+    end
+    %child2 crossover
+    if(randi([1,100])< 100*p_c)
+        while ~(ch2.check_constraints())
+            for i=1:pos
+               ch2.(prop_arr(i)) = parent2.(prop_arr(i)); 
+            end   
+            for i = pos:len(prop_arr)
+               ch2.(prop_arr(i)) = parent1.(prop_arr(i)); 
+            end
+        end
+    end
+    %return list ch1,ch2
+end
+ 
 function t = terminated(i, total) 
     if i<total
         t = 0;
