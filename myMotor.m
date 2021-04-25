@@ -1,5 +1,6 @@
-classdef myMotor < handle
+classdef myMotor < matlab.mixin.Copyable
     properties
+        name
         rso     {mustBeNumeric}
         rsi     {mustBeNumeric}
         dm      {mustBeNumeric} 	% Magnet thickness 
@@ -9,23 +10,26 @@ classdef myMotor < handle
         fp 		{mustBeNumeric}     % Pole fraction spanned by the iron 
         ft 		{mustBeNumeric}     % Width of tooth as a fraction of pole pitch at stator ID 
         fb  	{mustBeNumeric}     % Back iron thickness as a fraction of tooth thickness 
-        go  	{mustBeNumeric}     % stator to magnet mechanical clearance 
-        hh  	{mustBeNumeric}     % length in the into-the-page direction 
-        Jpk  	{mustBeNumeric}
+        go  = 0.5;                  % stator to magnet mechanical clearance 
+        hh  = 25;                   % length in the into-the-page direction 
+        Jpk = 10.0;                 % peak current density in the winding                  
         fitness {mustBeNumeric}
         mass    {mustBeNumeric}
         tqdes   {mustBeNumeric}
     end
     
-    
-    
     methods
         
-        function obj = myMotor(rso,rsi,dm,dc,ds,fm,fp,ft,fb,go,hh,Jpk,tqdes) % constructor
+        function obj = myMotor(rso,rsi,dm,dc,ds,fm,fp,ft,fb) % constructor
+            global epoch;
+            global id;
+            obj.name = id;
             if nargin == 0 % random initialization - CHECK RANGE WITH GKITS
                            % wtf is newrso on original gkitscode  
                 % try random initialization until you meet the constraints
                 obj = randinit(obj);
+                %epoch_str = rso;
+                
             else % initialize on params
                 obj.rso = rso;
                 obj.rsi = rsi;
@@ -36,39 +40,43 @@ classdef myMotor < handle
                 obj.fp  = fp;
                 obj.ft  = ft;
                 obj.fb  = fb;
-                obj.go  = go;
-                obj.hh  = hh;
-                obj.Jpk = Jpk;          
-                obj.tqdes = tqdes;
             end
+            fprintf("motor initialized on epoch: %d\n", epoch);
         end
         
-        function mutated = mutate(self, p_m, prop_arr)
-            if(randi([1,100]) < (100*p_m))   
-                while ~(self.check_constraints())
-                    pos = randi([1,length(prop_arr)]); 
-                    mutated_param = prop_arr(pos);
-                    self.(mutated_param) = randi([1,10]); %check range with gkits
-
+        function mutate(self, p_m, prop_arr)
+            global acceptRange;
+            %self.(prop_arr(1)) = 42;  
+            if(randi([1,100]) < (100*p_m)) 
+                pos = randi([1,length(prop_arr)]); 
+                mutated_param = prop_arr(pos);
+                before = self.(mutated_param);
+                while 1
+                    self.(mutated_param) = self.randrange(acceptRange.(mutated_param)); %check range with gkits
+                    if (self.check_constraints()) break; end
                 end
+                after = self.(mutated_param);
+                fprintf("        %s gene mutated from %f to %f\n", mutated_param, before, after);
             end
         end
          
-        
         function totalMass = compute_mass(self)
             BuildMotor(self.rso, self.rsi, self.dm, self.dc, self.ds, ...
                 self.fm, self.fp, self.ft, self.fb, self.go, self.hh, self.Jpk);
             mi_saveas('temp.fem');
+            mi_probdef(0,'millimeters','planar',1e-008,self.hh,25,0) %some solver parameters to speed up solutions proccess
+            mi_smartmesh(0);                                         %some solver parameters to speed up solutions proccess
             try
                 mi_analyze(1);
             catch
+                disp("        motor found defective after analysis, reinitializing...");
                 self = randinit(self);
-                disp(self.rso);
                 totalMass = compute_mass(self);
                 return
             end
-            mi_loadsolution;
-
+            mi_loadsolution;       
+            
+            
             % Compute torque for a fixed length to figure out how long the machine
             % needs to be to get the desired torque;
             mo_groupselectblock(1);
@@ -98,35 +106,10 @@ classdef myMotor < handle
         end
         
         function eval_fitness(self)
-            self.fitness = compute_mass(self);
-            
-         
+            self.mass = compute_mass(self);
+            self.fitness = 1/self.mass;
         end
-
-    end
-    
-    methods (Access = private)       
-        function obj = randinit(obj)
-            while true 
-                        obj.rso = rand();
-                        obj.rsi = rand();
-                        obj.dm  = rand();
-                        obj.dc  = rand();
-                        obj.ds  = rand();
-                        obj.fm  = rand();
-                        obj.fp  = rand();
-                        obj.ft  = rand();
-                        obj.fb  = rand();
-                        obj.go  = rand();
-                        obj.hh  = rand();
-                        obj.Jpk = rand();
-                        obj.tqdes = rand();
-
-                        if (obj.check_constraints()) 
-                            break;
-                        end
-            end
-        end
+        
         function bOK = check_constraints(self)
             bOK = 1;
             if ((self.rsi + self.ds) > self.rso) 
@@ -141,8 +124,39 @@ classdef myMotor < handle
                 bOK=0; end
             if ((self.ft > 1) || (self.ft<0)) 
                 bOK=0; end    
+            
+            global total_ch_calls;
+            global failed_ch_calls;
+            total_ch_calls = total_ch_calls + 1;
+            if (bOK == 0) failed_ch_calls = failed_ch_calls + 1; end
+        end
+         
+    end
+    
+    methods (Access = private)       
+        function obj = randinit(obj)
+            global acceptRange;
+            while true 
+                        obj.rso = obj.randrange(acceptRange.rso);
+                        obj.rsi = obj.randrange(acceptRange.rsi);
+                        obj.dm  = obj.randrange(acceptRange.dm);
+                        obj.dc  = obj.randrange(acceptRange.dc);
+                        obj.ds  = obj.randrange(acceptRange.ds);
+                        obj.fm  = obj.randrange(acceptRange.fm);
+                        obj.fp  = obj.randrange(acceptRange.fp);
+                        obj.ft  = obj.randrange(acceptRange.ft);
+                        obj.fb  = obj.randrange(acceptRange.fb);
+                        
+                        if (obj.check_constraints()) 
+                            break;
+                        end
+            end
         end
         
+        function y = randrange(~, r)
+            A = r(2)-r(1);
+            y = A*rand+r(1);         
+        end
     end
     
 end
